@@ -1,81 +1,97 @@
 import { ChildProcess } from "child_process";
 
-export default class Signal {
-  private actions: SignalActions;
+export class Signal {
+  private proc: NodeJS.Process;
+  private onTerm: iSignalCallback;
+  private onIgn: iSignalCallback;
+  private onCore: iSignalCallback;
 
-  constructor(private proc: NodeJS.Process = process) {
-    proc.on(POSIXSignal.SIGHUP, this.onTerm);
-    proc.on(POSIXSignal.SIGINT, this.onTerm);
-    proc.on(POSIXSignal.SIGQUIT, this.onCore);
-    proc.on(POSIXSignal.SIGILL, this.onCore);
-    proc.on(POSIXSignal.SIGABRT, this.onCore);
-    proc.on(POSIXSignal.SIGFPE, this.onCore);
-    proc.on(POSIXSignal.SIGKILL, this.onTerm);
-    proc.on(POSIXSignal.SIGSEGV, this.onCore);
-    proc.on(POSIXSignal.SIGPIPE, this.onTerm);
-    proc.on(POSIXSignal.SIGALRM, this.onTerm);
-    proc.on(POSIXSignal.SIGTERM, this.onTerm);
-    proc.on(POSIXSignal.SIGUSR1, this.onTerm);
-    proc.on(POSIXSignal.SIGUSR2, this.onTerm);
-    proc.on(POSIXSignal.SIGCHLD, this.onIgn);
-    proc.on(POSIXSignal.SIGUSR2, this.onTerm);
-    proc.on(POSIXSignal.SIGUSR2, this.onTerm);
-    proc.on(POSIXSignal.SIGUSR2, this.onTerm);
-    proc.on(POSIXSignal.SIGUSR2, this.onTerm);
-    proc.on(POSIXSignal.SIGUSR2, this.onTerm);
-  }
+  constructor({onTerm, onIgn, onCore, proc}: iSignalConfig = {}) {
+    this.proc = proc || process;
+    this.onTerm = onTerm || (() => undefined);
+    this.onCore = onCore || (() => undefined);
+    this.onIgn = onIgn || (() => undefined);
 
-  private onTerm () {
-    
-  }
+    Object.keys(POSIXSignal)
+      .filter(x => !/^\d+/.test(x))
+      .map(str => <unknown>str as POSIXSignal) 
+      .map(signal => {
+        var action = <unknown>POSIXSignal[signal] as Action;
+        var actionCbk: iSignalCallback;
+        var noop = () => {};
 
-  private onIgn () {
-    
-  }
+        switch (action) {
+          case Action.Term:
+            actionCbk = (signalStr) => {
+              Promise.resolve(signalStr)
+                .then(this.onTerm)
+                .finally(() => this.proc.exit());
+            };
+            break;
 
-  private onCore () {
-    
-  }
+          case Action.Core:
+            actionCbk = (signalStr) => {
+              this.onCore(signalStr);
+              throw new Error(`Process terminated via signal: ${signal}`);
+            };
+            break;
 
-  private onStop () {
-    
-  }
+          case Action.Ign:
+            actionCbk = this.onIgn;
+            break;
 
-  private onCont () {
-    
+          default:
+            actionCbk = noop;
+            break;
+        }
+
+        if(actionCbk == noop) { return; }
+        this.proc.on(<unknown>signal as NodeJS.Signals, actionCbk);
+      })
   }
 }
 
-type SignalActions = {
-  [P in keyof SignalAction]: () => void;
-};
+export interface iSignalConfig {
+  onTerm?: iSignalCallback,
+  onIgn?: iSignalCallback,
+  onCore?: iSignalCallback,
+  proc?: NodeJS.Process
+}
 
-export enum SignalAction {
-  Term = 'Term',
-  Ign = 'Ign',
-  Core = 'Core',
-  Stop = 'Stop',
-  Cont = 'Cont',
+export interface iSignalCallback {
+  (signal?: string): void
+}
+
+export enum Action {
+  Term,
+  Ign,
+  Core,
+  Stop,
+  Cont,
+  NodeUncaught,
+  NodeInvalid,
 }
 
 export enum POSIXSignal {
-  SIGHUP = 'SIGHUP',
-  SIGINT = 'SIGINT',
-  SIGQUIT = 'SIGQUIT',
-  SIGILL = 'SIGILL',
-  SIGABRT = 'SIGABRT',
-  SIGFPE = 'SIGFPE',
-  SIGKILL = 'SIGKILL',
-  SIGSEGV = 'SIGSEGV',
-  SIGPIPE = 'SIGPIPE',
-  SIGALRM = 'SIGALRM',
-  SIGTERM = 'SIGTERM',
-  SIGUSR1 = 'SIGUSR1',
-  SIGUSR2 = 'SIGUSR2',
-  SIGCHLD = 'SIGCHLD',
-  SIGCONT = 'SIGCONT',
-  SIGSTOP = 'SIGSTOP',
-  SIGTSTP = 'SIGTSTP',
-  SIGTTIN = 'SIGTTIN',
-  SIGTTOU = 'SIGTTOU',
+  SIGHUP = Action.Term,
+  SIGINT = Action.Term,
+  SIGQUIT = Action.Core,
+  SIGILL = Action.Core,
+  SIGABRT = Action.Core,
+  SIGFPE = Action.Core,
+  SIGKILL = Action.NodeInvalid,
+  SIGSEGV = Action.Core,
+  SIGPIPE = Action.Ign,
+  SIGALRM = Action.Term,
+  SIGTERM = Action.Term,
+  SIGUSR1 = Action.NodeInvalid,
+  SIGUSR2 = Action.Term,
+  SIGCHLD = Action.Ign,
+  SIGCONT = Action.Cont,
+  SIGSTOP = Action.NodeInvalid,
+  SIGTSTP = Action.Stop,
+  SIGTTIN = Action.Stop,
+  SIGTTOU = Action.Stop,
+  SIGBREAK = Action.Ign,
+  SIGBUS = Action.Core,
 }

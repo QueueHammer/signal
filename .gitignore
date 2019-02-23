@@ -88,5 +88,7 @@ typings/
 
 # Custom Build Folder
 
+.vscode
+mochawesome-report/
 ship
 work
