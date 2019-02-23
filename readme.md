@@ -13,6 +13,7 @@ new Signal({
 Three callbacks are provided (Maybe more in the future); `onTerm`, `onCore`, and `onIgn`. This gives you a little more control over how they are handled. `Stop` and `Cont`inue are caught by Node.js, so they are not provided.
 
 Suggestions on how you can try to handel these errors come from the [`signal(7)`][1] man page...
+
 | Category | General Response |
 |--|--|
 | Term | Default action is to terminate the process. |
