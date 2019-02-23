@@ -90,5 +90,5 @@ typings/
 
 .vscode
 mochawesome-report/
-ship
+#ship
 work

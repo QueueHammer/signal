@@ -1,24 +1,26 @@
 {
   "name": "signal",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A library to wrap up signal handling into a couple of simple callbacks",
+  "main": "ship/index.js",
   "scripts": {
+    "tsc": "tsc",
     "pretest": "npm run tsc",
     "test": "nyc --reporter=html mocha 'work/**/*.spec.js' --reporter mochawesome",
-    "tsc": "tsc"
+    "preship": "rm -rf work/*.spec.js* && rm -rf ship",
+    "ship": "mkdir ship && cp work/* ship/"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["Signal" , "Term", "Core", "Ignore", "Shutdown"],
+  "author": "Christopher Smith",
   "license": "ISC",
   "dependencies": {
-    "@types/node": "^11.9.4",
-    "typescript": "^3.3.3"
   },
   "devDependencies": {
+    "@types/node": "^11.9.4",
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.6",
     "@types/sinon": "^7.0.6",
+    "typescript": "^3.3.3",
     "chai": "^4.2.0",
     "mocha": "^5.2.0",
     "mochawesome": "^3.1.1",
